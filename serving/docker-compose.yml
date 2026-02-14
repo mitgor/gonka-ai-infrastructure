@@ -1,0 +1,124 @@
+# Gonka.ai Model Serving — Docker Compose
+#
+# Usage:
+#   docker compose -f infrastructure/serving/docker-compose.yml up
+#
+# Profiles:
+#   --profile full      Full precision K2.5 (8x H200, default)
+#   --profile q4        Q4 quantized K2.5 (4x GPU + RAM)
+#   --profile q2        Q2 quantized K2.5 (2x GPU + RAM)
+
+services:
+  k25-full:
+    build:
+      context: ../..
+      dockerfile: infrastructure/serving/Dockerfile
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    environment:
+      - GONKA_MODEL=moonshotai/Kimi-K2.5
+      - GONKA_TP_SIZE=8
+      - GONKA_MAX_MODEL_LEN=131072
+    restart: unless-stopped
+    profiles:
+      - full
+      - default
+
+  k25-q4:
+    build:
+      context: ../..
+      dockerfile: infrastructure/serving/Dockerfile
+    ports:
+      - "8001:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 4
+              capabilities: [gpu]
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    environment:
+      - GONKA_MODEL=unsloth/Kimi-K2.5-GGUF
+      - GONKA_TP_SIZE=4
+      - GONKA_MAX_MODEL_LEN=65536
+    command:
+      - "--model"
+      - "unsloth/Kimi-K2.5-GGUF"
+      - "--tensor-parallel-size"
+      - "4"
+      - "--max-model-len"
+      - "65536"
+      - "--gpu-memory-utilization"
+      - "0.92"
+      - "--tool-call-parser"
+      - "kimi_k2"
+      - "--reasoning-parser"
+      - "kimi_k2"
+      - "--mm-encoder-tp-mode"
+      - "data"
+      - "--trust-remote-code"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+    restart: unless-stopped
+    profiles:
+      - q4
+
+  k25-q2:
+    build:
+      context: ../..
+      dockerfile: infrastructure/serving/Dockerfile
+    ports:
+      - "8002:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2
+              capabilities: [gpu]
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    environment:
+      - GONKA_MODEL=unsloth/Kimi-K2.5-GGUF
+      - GONKA_TP_SIZE=2
+      - GONKA_MAX_MODEL_LEN=32768
+    command:
+      - "--model"
+      - "unsloth/Kimi-K2.5-GGUF"
+      - "--tensor-parallel-size"
+      - "2"
+      - "--max-model-len"
+      - "32768"
+      - "--gpu-memory-utilization"
+      - "0.92"
+      - "--tool-call-parser"
+      - "kimi_k2"
+      - "--reasoning-parser"
+      - "kimi_k2"
+      - "--mm-encoder-tp-mode"
+      - "data"
+      - "--trust-remote-code"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+    restart: unless-stopped
+    profiles:
+      - q2
+
+volumes:
+  model-cache:
+    driver: local

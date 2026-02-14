@@ -1,0 +1,79 @@
+# Gonka.ai Model Registry
+#
+# Defines available models, their backends, and serving configuration.
+# The gateway reads this to route requests to the correct vLLM instance.
+
+models:
+  # === Kimi K2.5 (Flagship) ===
+  kimi-k2.5:
+    display_name: "Kimi K2.5"
+    provider: "moonshotai"
+    model_id: "moonshotai/Kimi-K2.5"
+    tier: premium
+    backend_url: "http://localhost:8000"
+    capabilities:
+      - chat
+      - tool_calling
+      - reasoning
+      - vision
+    context_length: 131072
+    pricing:
+      input_per_1m_tokens: 2.00
+      output_per_1m_tokens: 8.00
+
+  kimi-k2.5-q4:
+    display_name: "Kimi K2.5 (Q4)"
+    provider: "moonshotai"
+    model_id: "moonshotai/Kimi-K2.5"
+    tier: standard
+    backend_url: "http://localhost:8001"
+    capabilities:
+      - chat
+      - tool_calling
+      - reasoning
+      - vision
+    context_length: 65536
+    pricing:
+      input_per_1m_tokens: 1.00
+      output_per_1m_tokens: 4.00
+
+  kimi-k2.5-q2:
+    display_name: "Kimi K2.5 (Q2)"
+    provider: "moonshotai"
+    model_id: "moonshotai/Kimi-K2.5"
+    tier: budget
+    backend_url: "http://localhost:8002"
+    capabilities:
+      - chat
+      - tool_calling
+      - reasoning
+    context_length: 32768
+    pricing:
+      input_per_1m_tokens: 0.50
+      output_per_1m_tokens: 2.00
+
+  # === Future models (Phase 13+) ===
+  # deepseek-r1-70b:
+  #   display_name: "DeepSeek R1 Distill 70B"
+  #   provider: "deepseek-ai"
+  #   model_id: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B"
+  #   tier: standard
+  #   backend_url: "http://localhost:8010"
+
+  # llama-4-scout:
+  #   display_name: "Llama 4 Scout"
+  #   provider: "meta-llama"
+  #   model_id: "meta-llama/Llama-4-Scout-17B-16E-Instruct"
+  #   tier: standard
+  #   backend_url: "http://localhost:8020"
+
+# Tiering rules for auto-routing (Phase 13)
+tiering:
+  classification_model: "kimi-k2.5-q2"
+  reasoning_model: "kimi-k2.5"
+  default_model: "kimi-k2.5-q4"
+  rules:
+    - pattern: "classify|categorize|label|tag"
+      route_to: classification_model
+    - pattern: "think|reason|analyze|explain why|step by step"
+      route_to: reasoning_model
